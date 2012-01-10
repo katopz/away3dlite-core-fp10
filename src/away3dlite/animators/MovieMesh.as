@@ -1,18 +1,20 @@
 package away3dlite.animators
 {
-	import away3dlite.arcane;
-	import away3dlite.core.base.*;
 	import away3dlite.animators.frames.Frame;
-	
-	import flash.events.*;
-	import flash.utils.*;
-	
+	import away3dlite.arcane;
+	import away3dlite.cameras.Camera3D;
+	import away3dlite.core.*;
+	import away3dlite.core.base.*;
+
+	import flash.geom.Matrix3D;
+	import flash.utils.Dictionary;
+
 	use namespace arcane;
-	
+
 	/**
 	 * Animates a series of <code>Frame</code> objects in sequence in a mesh.
 	 */
-	public class MovieMesh extends Mesh
+	public class MovieMesh extends Mesh implements IDestroyable
 	{
 		/*
 		 * Three kinds of animation sequences:
@@ -23,8 +25,13 @@ package away3dlite.animators
 		public static const ANIM_NORMAL:int = 1;
 		public static const ANIM_LOOP:int = 2;
 		public static const ANIM_STOP:int = 4;
-		private var framesLength:int = 0;
-		
+		private var _totalFrames:int = 0;
+
+		public function get totalFrames():int
+		{
+			return _totalFrames;
+		}
+
 		//Keep track of the current frame number and animation
 		private var _currentFrame:int = 0;
 		private var _addFrame:int;
@@ -32,130 +39,169 @@ package away3dlite.animators
 		private var _begin:int;
 		private var _end:int;
 		private var _type:int;
-		private var _ctime:Number = 0;
-		private var _otime:Number = 0;
 
-		private var labels:Dictionary = new Dictionary(true);
-		private var _currentLabel:String;
-		
-		private function onEnterFrame(event:Event = null):void
+		public function get status():int
 		{
-			_ctime = getTimer();
+			return _type;
+		}
 
+		private var _ctime:int = 0;
+
+		public function get currentTime():Number
+		{
+			return _ctime;
+		}
+
+		private var _otime:int;
+
+		public function set prevTime(value:int):void
+		{
+			_otime = value;
+		}
+
+		private var _labels:Dictionary = new Dictionary(true);
+		private var _currentLabel:String;
+
+		public function seek(ctime:int, otime:int):void
+		{
 			var cframe:Frame;
 			var nframe:Frame;
 			var i:int = _vertices.length;
-			
+
+			_ctime = ctime;
+
 			cframe = frames[_currentFrame];
-			nframe = frames[(_currentFrame + 1) % framesLength];
+			nframe = frames[(_currentFrame + 1) % _totalFrames];
 
 			// TODO : optimize
 			var _cframe_vertices:Vector.<Number> = cframe.vertices;
 			var _nframe_vertices:Vector.<Number> = nframe.vertices;
-			
-			while (i--)
-				_vertices[i] = _cframe_vertices[i] + _interp*(_nframe_vertices[i] - _cframe_vertices[i]);
-			
-			if (_type != ANIM_STOP) {
-				_interp += fps * (_ctime - _otime) / 1000;
-				
-				if (_interp > 1) {
+
+			if (visible)
+				while (i--)
+					_vertices[int(i)] = _cframe_vertices[int(i)] + _interp * (_nframe_vertices[int(i)] - _cframe_vertices[int(i)]);
+
+			if (_type != ANIM_STOP)
+			{
+				_interp += fps * (ctime - otime) / 1000;
+
+				if (_interp > 1)
+				{
 					_addFrame = int(_interp);
-					
-					if (_type == ANIM_LOOP && _currentFrame + _addFrame >= _end)
+
+					if ((_type == ANIM_LOOP || _type == ANIM_NORMAL) && _currentFrame + _addFrame >= _end)
 						keyframe = _begin + _currentFrame + _addFrame - _end;
 					else
 						keyframe += _addFrame;
-					
+
 					_interp -= _addFrame;
 				}
 			}
-			_otime = _ctime;
+			_otime = ctime;
+
+			if (visible && _scene)
+				_scene.isDirty = true;
 		}
-		
+
 		/**
 		 * Number of animation frames to display per second
 		 */
-		public var fps:int = 24;
+		public var fps:int = 30;
 
 		/**
 		 * The array of frames that make up the animation sequence.
 		 */
 		public var frames:Vector.<Frame> = new Vector.<Frame>();
-		
+
 		/**
 		 * Creates a new <code>MovieMesh</code> object that provides a "keyframe animation"/"vertex animation"/"mesh deformation" framework for subclass loaders.
 		 */
 		public function MovieMesh()
 		{
 			super();
+			shareClonedVertice = false;
 		}
-		
+
 		/**
 		 * Adds a new frame to the animation timeline.
 		 */
 		public function addFrame(frame:Frame):void
 		{
 			var _name:String = frame.name.replace(/[0-9]/g, "");
-			
-			if (!labels[_name])
-				labels[_name] = {begin:framesLength, end:framesLength};
+
+			if (!_labels[_name])
+				_labels[_name] = new FrameData(_totalFrames, _totalFrames);
 			else
-				++labels[_name].end;
+				++FrameData(_labels[_name]).end;
 
 			frames.push(frame);
-			
-			framesLength++;
+
+			_totalFrames++;
 		}
-		
+
 		/**
 		 * Begins a looping sequence in the animation.
-		 * 
+		 *
 		 * @param begin		The starting frame position.
 		 * @param end		The ending frame position.
 		 */
 		public function loop(begin:int, end:int):void
 		{
-			if (framesLength > 0) {
-				_begin = (begin % framesLength);
-				_end = (end % framesLength);
-			} else {
+			if (_totalFrames > 0)
+			{
+				_begin = (begin % _totalFrames);
+				_end = (end % _totalFrames);
+			}
+			else
+			{
 				_begin = begin;
 				_end = end;
 			}
 
 			keyframe = begin;
 			_type = ANIM_LOOP;
-			
-			addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		}
-		
+
 		/**
 		 * Plays a pre-defined labelled sequence of animation frames.
 		 */
 		public function play(label:String = ""):void
 		{
-			if (!labels)
-				return;
-
-			if (_currentLabel != label) {
+			if (_labels)
+			{
 				_currentLabel = label;
-				loop(labels[label].begin, labels[label].end);
+
+				var _frameData:FrameData = _labels[label] as FrameData;
+				if (_frameData)
+				{
+					loop(_frameData.begin, _frameData.end);
+				}
+				else
+				{
+					var _begin:int = 0;
+					var _end:int = 0;
+
+					for each (_frameData in _labels)
+					{
+						_begin = (_frameData.begin < _begin) ? _frameData.begin : _begin;
+						_end = (_frameData.end > _end) ? _frameData.end : _end;
+
+						loop(_begin, _end);
+					}
+				}
 			}
 
-			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+			_type = ANIM_NORMAL;
 		}
-		
+
 		/**
 		 * Stops the animation.
 		 */
 		public function stop():void
 		{
 			_type = ANIM_STOP;
-			
-			removeEventListener(Event.ENTER_FRAME, onEnterFrame);
 		}
-		
+
 		/**
 		 * Defines the current keyframe.
 		 */
@@ -166,7 +212,61 @@ package away3dlite.animators
 
 		public function set keyframe(i:int):void
 		{
-			_currentFrame = i % framesLength;
+			_currentFrame = i % _totalFrames;
 		}
+
+		/** @private */
+		arcane override function project(camera:Camera3D, parentSceneMatrix3D:Matrix3D = null):void
+		{
+			if (_scene)
+				_scene.isDirty = _scene.isDirty || (_type != ANIM_STOP);
+
+			super.project(camera, parentSceneMatrix3D);
+		}
+
+		public override function clone(object:Object3D = null):Object3D
+		{
+			var mesh:MovieMesh = (object as MovieMesh) || new MovieMesh();
+			super.clone(mesh);
+
+			mesh._totalFrames = _totalFrames;
+			mesh.fps = fps;
+			mesh.frames = frames.concat();
+
+			mesh._currentLabel = _currentLabel;
+			mesh._begin = _begin;
+			mesh._end = _end;
+			mesh._type = _type;
+
+			for (var i:* in _labels)
+				mesh._labels[i] = _labels[i];
+
+			return mesh;
+		}
+
+		override public function destroy():void
+		{
+			if (_isDestroyed)
+				return;
+
+			stop();
+
+			_labels = null;
+			frames = null;
+
+			super.destroy();
+		}
+	}
+}
+
+internal class FrameData
+{
+	public var begin:int;
+	public var end:int;
+
+	public function FrameData(begin:int, end:int)
+	{
+		this.begin = begin;
+		this.end = end;
 	}
 }

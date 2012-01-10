@@ -41,7 +41,7 @@
 		private var _meshData:MeshData;
 		private var _geometryData:GeometryData;
 		private var _moveVector:Vector3D = new Vector3D();
-		private var _materialNames:Array = new Array();
+		private var _materialNames:Array = [];
 
 		/**
 		 * Array of mesh data objects used for storing the parsed 3ds data structure.
@@ -50,8 +50,9 @@
 
 		private function getMaterialChunkLine(lines:Array, startLine:int = 0):int
 		{
-			for (var i:uint = startLine; i < lines.length; ++i)
-				if (lines[i].indexOf("Material") == 0)
+			var lines_length:int = lines.length;
+			for (var i:uint = startLine; i < lines_length; ++i)
+				if (String(lines[int(i)]).indexOf("Material") == 0)
 					return int(i);
 
 			return -1;
@@ -142,9 +143,10 @@
 
 		private function getObjectChunkLine(lines:Array, startLine:int = 0):int
 		{
-			for (var i:uint = startLine; i < lines.length; ++i)
+			var lines_length:int = lines.length;
+			for (var i:uint = startLine; i < lines_length; ++i)
 			{
-				if (lines[i].indexOf("Object") == 0)
+				if (String(lines[int(i)]).indexOf("Object") == 0)
 				{
 					return int(i);
 				}
@@ -207,7 +209,7 @@
 			if (l == -1)
 				return -1;
 
-			line = lines[l++];
+			line = lines[int(l++)];
 
 			var numFaces:int = parseInt(line.substring(line.indexOf("face") + 5));
 			var faceEndLine:int = l + numFaces;
@@ -232,34 +234,34 @@
 
 			//TODO : do we need this?
 			/*
-			// Resolve parent-child relationship.
-			var depth:int;
-			try
-			{
-				depth = parseInt(properties["depth"]);
-			}
-			catch (e:Error)
-			{
-				depth = 0;
-			}
-			var parentMesh:ObjectContainer3D = _prevMesh;
-			if (depth <= 0)
-			{
-				parentMesh = this;
-				depth = 0;
-			}
-			else
-			{
-				while (depth <= _prevDepth)
-				{
-					parentMesh = ObjectContainer3D(parentMesh).parent;
-					--_prevDepth;
-				}
-			}
-			parentMesh.addChild(mesh);
-			_prevMesh = mesh;
-			_prevDepth = depth;
-			*/
+			   // Resolve parent-child relationship.
+			   var depth:int;
+			   try
+			   {
+			   depth = parseInt(properties["depth"]);
+			   }
+			   catch (e:Error)
+			   {
+			   depth = 0;
+			   }
+			   var parentMesh:ObjectContainer3D = _prevMesh;
+			   if (depth <= 0)
+			   {
+			   parentMesh = this;
+			   depth = 0;
+			   }
+			   else
+			   {
+			   while (depth <= _prevDepth)
+			   {
+			   parentMesh = ObjectContainer3D(parentMesh).parent;
+			   --_prevDepth;
+			   }
+			   }
+			   parentMesh.addChild(mesh);
+			   _prevMesh = mesh;
+			   _prevDepth = depth;
+			 */
 
 			return faceEndLine;
 		}
@@ -370,9 +372,10 @@
 
 		private static function getChunkLine(lines:Array, chunkName:String, startLine:int = 0):int
 		{
-			for (var i:uint = startLine; i < lines.length; ++i)
+			var lines_length:int = lines.length;
+			for (var i:uint = startLine; i < lines_length; ++i)
 			{
-				if (lines[i].indexOf(chunkName) != -1)
+				if (String(lines[int(i)]).indexOf(chunkName) != -1)
 				{
 					return int(i);
 				}
@@ -404,9 +407,9 @@
 		{
 			_geometryData.vertices.push(-v0.x, -v0.y, v0.z, -v1.x, -v1.y, v1.z, -v2.x, -v2.y, v2.z);
 			_geometryData.uvtData.push(uv0.x, uv0.y, 1, uv1.x, uv1.y, 1, uv2.x, uv2.y, 1);
-			
+
 			n += 3;
-			
+
 			_geometryData.indices.push(n, n - 1, n - 2);
 			_geometryData.faceLengths.push(3);
 		}
@@ -419,9 +422,9 @@
 				//create Mesh object
 				var mesh:Mesh = new Mesh();
 				//mesh.name = _meshData.name;
-				
+
 				_meshData.material.meshes.push(mesh);
-				
+
 				_geometryData = _meshData.geometry;
 				/*
 				   var geometry:Geometry = _geometryData.geometry;
@@ -466,9 +469,9 @@
 				mesh._uvtData = _geometryData.uvtData;
 				mesh._indices = _geometryData.indices;
 				mesh._faceLengths = _geometryData.faceLengths;
-				
+
 				mesh.buildFaces();
-				
+
 				//center vertex points in mesh for better bounding radius calulations
 				if (centerMeshes)
 				{
