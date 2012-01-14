@@ -74,7 +74,7 @@ package away3dlite.core.base
 		{
 			super.project(camera, parentSceneMatrix3D);
 
-			if (_materialsDirty)
+			if (_materialsDirty && _scene)
 				_scene.isDirty = true;
 
 			// project the normals
