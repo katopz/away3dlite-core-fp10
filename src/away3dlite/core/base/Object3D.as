@@ -256,30 +256,58 @@ package away3dlite.core.base
 
 		override public function set alpha(value:Number):void
 		{
+			if(super.alpha == value)
+				return;
+			
 			super.alpha = value;
+			
 			if (canvas && canvas.alpha != value)
 				canvas.alpha = value;
+			
+			if (_scene)
+				_scene.isDirty = true;
 		}
 
 		override public function set blendMode(value:String):void
 		{
+			if(super.blendMode == value)
+				return;
+			
 			super.blendMode = value;
+			
 			if (canvas && canvas.blendMode != value)
 				canvas.blendMode = value;
+			
+			if (_scene)
+				_scene.isDirty = true;
 		}
 
 		override public function set filters(value:Array):void
 		{
+			if(super.filters == value)
+				return;
+			
 			super.filters = value;
+			
 			if (canvas && canvas.filters != value)
 				canvas.filters = value;
+			
+			if (_scene)
+				_scene.isDirty = true;
 		}
 
 		override public function set visible(value:Boolean):void
 		{
+			if(super.visible == value)
+				return;
+			
 			super.visible = value;
+			
 			if (canvas && canvas.visible != value)
 				canvas.visible = value;
+			
+			if (_scene)
+				_scene.isDirty = true;
 		}
 
 		/**
