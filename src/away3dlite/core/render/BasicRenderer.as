@@ -36,6 +36,12 @@ package away3dlite.core.render
 
 			if (cullObjects && object._frustumCulling)
 				return;
+			
+			if (object._canvas && !object._canvas.visible)
+				return;
+			
+			if (object._layer && !object._layer.visible)
+				return;
 
 			++_view._renderedObjects;
 
