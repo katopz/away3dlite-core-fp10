@@ -27,6 +27,14 @@ package away3dlite.loaders.utils
 			dispatchEvent(e);
 		}
 
+		private function onItemError(e:Event):void
+		{
+			dispatchEvent(e);
+			cleanUpOldItem(currentLoader);
+			_currentItemIndex++;
+			loadNext();
+		}
+
 		private function onItemComplete(e:Event):void
 		{
 			cleanUpOldItem(currentLoader);
@@ -58,7 +66,7 @@ package away3dlite.loaders.utils
 					currentLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, onItemComplete);
 
 					currentLoader.contentLoaderInfo.addEventListener(HTTPStatusEvent.HTTP_STATUS, redispatchEvent);
-					currentLoader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, redispatchEvent);
+					currentLoader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, onItemError);
 					currentLoader.contentLoaderInfo.addEventListener(ProgressEvent.PROGRESS, redispatchEvent);
 					currentLoader.contentLoaderInfo.addEventListener(SecurityErrorEvent.SECURITY_ERROR, redispatchEvent);
 					currentLoader.load(currentURLRequest);
