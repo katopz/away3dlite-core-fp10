@@ -27,21 +27,53 @@ package away3dlite.core.render
 
 		private var _material_graphicsData:Vector.<IGraphicsData>;
 
+		private function disposeGraphics(object:Object3D):void
+		{
+			if (object is ObjectContainer3D)
+			{
+				var children:Array = (object as ObjectContainer3D).children;
+				var child:Object3D;
+
+				for each (child in children)
+				{
+					if (child._canvas)
+						child._canvas.graphics.clear();
+
+					if (child._layer)
+						child._layer.graphics.clear();
+
+					disposeGraphics(child);
+				}
+			}
+		}
+
 		private function collectFaces(object:Object3D):void
 		{
 			++_view._totalObjects;
 
 			if (!object.visible || object._perspCulling)
+			{
+				disposeGraphics(object);
 				return;
+			}
 
 			if (cullObjects && object._frustumCulling)
+			{
+				disposeGraphics(object);
 				return;
-			
+			}
+
 			if (object._canvas && !object._canvas.visible)
+			{
+				disposeGraphics(object);
 				return;
-			
+			}
+
 			if (object._layer && !object._layer.visible)
+			{
+				disposeGraphics(object);
 				return;
+			}
 
 			++_view._renderedObjects;
 
